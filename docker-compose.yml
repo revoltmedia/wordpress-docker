@@ -1,0 +1,79 @@
+version: '3'
+
+services:
+   db:
+     image: mysql:5.7
+     volumes:
+       - ./conf/db_data:/var/lib/mysql
+       - ./conf/mysql:/etc/mysql
+     ports:
+       - "3317:3306" # Optional
+     restart: always
+     env_file:
+       - ./.env
+   php:
+     depends_on:
+       - db
+     links:
+       - db
+     build: ./dockerfiles/php
+     volumes:
+       - ./conf/php-fpm:/usr/local/etc/php-fpm.d
+       - ./conf/usr-local-etc-php:/usr/local/etc/php
+       - ../public:/var/www/html/public #! Modifying this has reprocussions: the wordpress code location, the init script command and init script itself, and nginx vhost
+       - ../secrets:/var/www/html/secrets
+     restart: always
+     env_file:
+       - ./.env
+   nginx:
+     depends_on:
+       - db
+       - php
+       - wordpressinit
+     links:
+       - php
+     image: revoltmedia/ubuntu
+     volumes:
+       - ./ssl/certs:/etc/ssl/certs
+       - ./ssl/private:/etc/ssl/private
+       - ./conf/nginx:/etc/nginx
+       - ../public:/var/www/html/public #! Modifying this has reprocussions: the wordpress code location, the init script command and init script itself, and nginx vhost
+       - ../secrets:/var/www/html/secrets
+     ports:
+       - "8855:80"
+       - "8455:443"
+     restart: always
+     env_file:
+       - ./.env
+   wordpressinit:
+     depends_on:
+       - db
+       - php
+     image: revoltmedia/ubuntu
+     volumes:
+       - ./ssl/certs:/etc/ssl/certs
+       - ./ssl/private:/etc/ssl/private
+       - ./conf/nginx:/etc/nginx
+       - ../public:/var/www/html/public #! Modifying this has reprocussions: the wordpress code location, the init script command and init script itself, and nginx vhost
+       - ../secrets:/var/www/html/secrets
+       - ./scripts:/var/www/html/scripts
+     env_file:
+       - ./.env
+     command: bash -c "bash /var/www/html/scripts/init.sh"
+
+  #  wpcli:
+  #   depends_on:
+  #     - db
+  #   image: tatemz/wp-cli
+  #   volumes:
+  #     - ./public:/var/www/html/ #! Modifying this has reprocussions: the wordpress code location, the init script command and init script itself, and nginx vhost
+  #     - ./secrets:/var/www/html/secrets
+  #   links:
+  #     - db:mysql
+  #   env_file:
+  #     - ./.env
+  #   entrypoint: wp
+  #   command: "--info"
+
+volumes:
+    db_data:

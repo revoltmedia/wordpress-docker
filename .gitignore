@@ -1,0 +1,6 @@
+# .gitignore
+
+.env
+conf/db_data
+ssl/certs/nginx.crt
+ssl/private/nginx.key
